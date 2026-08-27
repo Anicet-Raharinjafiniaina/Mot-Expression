@@ -120,7 +120,7 @@ export function AiExplorerSection({
               <span>Gemini 3.7 Flash AI</span>
             </span>
             <span className="text-xs text-purple-200">
-              Mpanampy ara-pitenenana & Fandikana malagasy
+           
             </span>
           </div>
 

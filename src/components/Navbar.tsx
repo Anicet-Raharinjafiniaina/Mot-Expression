@@ -35,11 +35,11 @@ export function Navbar({
               className="flex items-center gap-2.5 group text-left cursor-pointer focus:outline-hidden"
             >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-xl shadow-xs group-hover:scale-105 transition-transform">
-                V
+                ME
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xl tracking-tight text-stone-900">Vocab</span>
+                  <span className="font-extrabold text-xl tracking-tight text-stone-900">Mot-Expression</span>
                 </div>
                 <p className="text-xs text-stone-500 hidden sm:block">1 mot & 1 expression par jour</p>
               </div>

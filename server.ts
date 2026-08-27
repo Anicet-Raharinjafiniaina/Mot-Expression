@@ -7,6 +7,17 @@ import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
+// TLS workaround for local dev networks:
+// When run behind a proxy / SSL-inspection filter, outgoing HTTPS calls to the
+// Gemini API can be intercepted with a self-signed certificate. Node rejects
+// it by default, which surfaces as a generic "fetch failed" (500 on /api/vocab/ask).
+// The @google/genai SDK does not expose a TLS/agent option in httpOptions, so we
+// toggle Node's global cert check here. Only enabled explicitly via .env flag.
+// In production, prefer a trusted CA or NODE_EXTRA_CA_CERTS instead.
+if (process.env.GEMINI_INSECURE_TLS === "true") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -33,7 +44,7 @@ function getGeminiClient(): GoogleGenAI {
 
 // Health endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", app: "Vocab", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", app: "Mot-Expression", timestamp: new Date().toISOString() });
 });
 
 // AI Endpoint: Explore/Generate custom word or expression with Malagasy translation
@@ -123,7 +134,10 @@ Return a JSON object strictly matching this schema:
     res.json({ success: true, data: parsed });
   } catch (error: any) {
     console.error("Gemini Explore Error:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to generate vocabulary entry" });
+    console.error("Gemini Explore cause:", error?.cause || error);
+    res
+      .status(500)
+      .json({ success: false, error: error?.cause?.message || error.message || "Failed to generate vocabulary entry" });
   }
 });
 
@@ -135,7 +149,7 @@ app.post("/api/vocab/ask", async (req, res) => {
 
     const response = await ai.models.generateContent({
       model: "gemini-3.7-flash",
-      contents: `You are Vocab's friendly Malagasy-French-English linguistic tutor.
+      contents: `You are Mot-Expression's friendly Malagasy-French-English linguistic tutor.
 The user is asking: "${question}"
 User's target learning language: ${language === 'en' ? 'English' : 'French'}.
 Provide a helpful, precise, culturally grounded answer with clear explanations, practical examples, and explicit Malagasy translations/equivalents (fanazavana amin'ny teny malagasy). Structure your response clearly with markdown headings, bullet points, and highlight key terms.`,
@@ -144,7 +158,10 @@ Provide a helpful, precise, culturally grounded answer with clear explanations, 
     res.json({ success: true, answer: response.text });
   } catch (error: any) {
     console.error("Gemini Ask Error:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to answer question" });
+    console.error("Gemini Ask cause:", error?.cause || error);
+    res
+      .status(500)
+      .json({ success: false, error: error?.cause?.message || error.message || "Failed to answer question" });
   }
 });
 
@@ -165,7 +182,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Vocab server running on http://0.0.0.0:${PORT}`);
+    console.log(`Mot-Expression server running on http://0.0.0.0:${PORT}`);
   });
 }
 
