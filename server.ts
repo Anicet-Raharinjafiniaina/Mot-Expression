@@ -86,7 +86,7 @@ Return a JSON object strictly matching this schema:
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -148,7 +148,7 @@ app.post("/api/vocab/ask", async (req, res) => {
     const ai = getGeminiClient();
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-3.6-flash",
       contents: `You are Mot-Expression's friendly Malagasy-French-English linguistic tutor.
 The user is asking: "${question}"
 User's target learning language: ${language === 'en' ? 'English' : 'French'}.

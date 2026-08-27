@@ -117,7 +117,7 @@ export function AiExplorerSection({
           <div className="flex items-center gap-2">
             <span className="text-xs uppercase tracking-wider font-bold bg-white/20 px-3 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Gemini 3.7 Flash AI</span>
+              <span>Intélligence artificielle</span>
             </span>
             <span className="text-xs text-purple-200">
            
@@ -125,7 +125,7 @@ export function AiExplorerSection({
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Explorateur de Vocabulaire & Assistant Malagasy
+            Explorateur de Vocabulaire
           </h2>
           <p className="text-sm text-purple-100/90 leading-relaxed">
             Générez des mots rares ou thématiques, analysez n'importe quel terme inconnu et obtenez des explications bilingues complètes en malagasy avec exemples authentiques.

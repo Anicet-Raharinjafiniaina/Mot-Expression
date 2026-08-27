@@ -329,8 +329,8 @@ export default function App() {
             <span>Apprentissage du vocabulaire quotidien (Français • English • Malagasy)</span>
           </div>
           <p className="text-stone-600">
-            1 mot & 1 expression par jour • Explications en malagasy • Quiz & Exercices
-          </p>
+            1 mot & 1 expression par jour • Explications en malagasy • Quiz & Exercices 
+          </p><p>created by Ⓐnc</p>
         </div>
       </footer>
     </div>
