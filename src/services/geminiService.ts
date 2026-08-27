@@ -10,6 +10,8 @@ export interface AiVocabResult {
   explanation: string;
   example: string;
   exampleTranslation?: string;
+  /** French translation provided when the source language is English. */
+  frenchTranslation?: string;
   synonyms?: string[];
   malagasy: {
     translation: string;

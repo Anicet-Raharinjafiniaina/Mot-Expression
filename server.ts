@@ -69,6 +69,7 @@ Return a JSON object strictly matching this schema:
   "explanation": "Detailed explanation of nuances, connotation, and when to use it in ${targetLang}",
   "example": "A realistic, contemporary contextual sentence in ${targetLang}",
   "exampleTranslation": "Translation of the example sentence in French/English",
+  "frenchTranslation": "When the source language is English, provide the French translation of the term/expression with a short French gloss. Omit or set to empty string when the source language is French.",
   "synonyms": ["synonym1", "synonym2"],
   "malagasy": {
     "translation": "Direct and accurate translation in Malagasy",
@@ -102,6 +103,7 @@ Return a JSON object strictly matching this schema:
             explanation: { type: Type.STRING },
             example: { type: Type.STRING },
             exampleTranslation: { type: Type.STRING },
+            frenchTranslation: { type: Type.STRING },
             synonyms: { type: Type.ARRAY, items: { type: Type.STRING } },
             malagasy: {
               type: Type.OBJECT,

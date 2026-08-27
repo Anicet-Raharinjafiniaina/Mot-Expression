@@ -129,6 +129,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         explanation: 'Making valuable discoveries by accident while looking for something completely different. It highlights positive chance and open-minded observation.',
         example: 'Finding my business partner at that random conference was pure serendipity.',
         exampleTranslation: 'Rencontrer mon associé lors de cette conférence imprévue était de la pure sérendipité.',
+        frenchTranslation: 'Sérendipité — le fait de faire une découverte heureuse ou bénéfique tout à fait par hasard.',
         synonyms: ['Fortuity', 'Good fortune', 'Chance discovery', 'Coincidence'],
         etymology: 'Coined by Horace Walpole in 1754 from the Persian fairy tale "The Three Princes of Serendip".',
         difficulty: 'Avancé',
@@ -153,6 +154,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         context: 'Used when someone must face a tough situation bravely and stop procrastinating.',
         example: 'I finally bit the bullet and told my boss I wanted to switch career paths.',
         exampleTranslation: 'J’ai finalement pris mon courage à deux mains et dit à mon patron que je voulais changer de voie.',
+        frenchTranslation: 'Prendre son courage à deux mains — se résoudre à affronter une situation difficile ou douloureuse qui ne peut être évitée.',
         malagasy: {
           translation: 'Mandray fanapahan-kevitra sarotra amin’ny herim-po / Miaritra ny mangidy mba hahazoana ny tsara',
           explanation: 'Ity fomba fiteny ity dia manambara fahasahiana manatanteraka zavatra mampatahotra na sarotra nefa tsy maintsy atao mba hahafahana mandroso.',
@@ -295,6 +297,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         explanation: 'Characterized by forceful and appropriate expression; able to express ideas effectively and beautifully.',
         example: 'She delivered an eloquent defense of human rights at the global summit.',
         exampleTranslation: 'Elle a prononcé un plaidoyer éloquent pour les droits humains au sommet mondial.',
+        frenchTranslation: 'Éloquent — qui s’exprime avec aisance, fluidité et persuasion, de façon juste et belle.',
         synonyms: ['Articulate', 'Expressive', 'Persuasive', 'Silver-tongued'],
         difficulty: 'Intermédiaire',
         tags: ['Communication', 'Language', 'Speaking'],
@@ -318,6 +321,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         context: 'Ideal for meetings, first dates, social gatherings, or classroom introductions.',
         example: 'The host told a funny story to break the ice and get everyone chatting.',
         exampleTranslation: 'L’hôte a raconté une histoire drôle pour briser la glace et faire discuter tout le monde.',
+        frenchTranslation: 'Briser la glace — détendre l’atmosphère et mettre à l’aise les personnes lors d’une première rencontre.',
         malagasy: {
           translation: 'Manapaka ny fahanginana / Mandrava ny henatra sy ny fahasahiranana',
           explanation: 'Fanaovana na filazana zavatra (toy ny vazivazy na fanontaniana mahafinaritra) mba hialan’ny henatra sy hahafahana mifandray malalaka.',
@@ -443,6 +447,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         explanation: 'The quality of continuing to try hard to achieve a goal even when facing obstacles and setbacks.',
         example: 'Her perseverance through years of rigorous training finally earned her the gold medal.',
         exampleTranslation: 'Sa persévérance à travers des années d’entraînement rigoureux lui a finalement valu la médaille d’or.',
+        frenchTranslation: 'Persévérance — constance et ténacité à poursuivre un objectif malgré les difficultés et les échecs.',
         synonyms: ['Persistence', 'Tenacity', 'Dedication', 'Grit'],
         difficulty: 'Intermédiaire',
         tags: ['Motivation', 'Success', 'Effort'],
@@ -466,6 +471,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         context: 'Used to agree enthusiastically with someone who has stated an insight with perfect accuracy.',
         example: 'When Sarah said communication was our main problem, she hit the nail on the head.',
         exampleTranslation: 'Quand Sarah a dit que la communication était notre problème principal, elle a mis le doigt dessus.',
+        frenchTranslation: 'Mettre le doigt exactement dessus / faire mouche — dire avec une parfaite justesse ce qui est en cause.',
         malagasy: {
           translation: 'Mitifitra marina / Milaza ny tena fototry ny raharaha tsy am-piolakolana',
           explanation: 'Filazana marina sy mazava tsara ny tena fototry ny olana na ny hevitra tiana hahatongavana.',
@@ -575,6 +581,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         explanation: 'Acting out of concern for the well-being of other people, without expecting any reward or personal advantage.',
         example: 'The volunteer’s altruism inspired the whole community to get involved.',
         exampleTranslation: 'L’altruisme du bénévole a inspiré toute la communauté à s’impliquer.',
+        frenchTranslation: 'Altruisme — souci désintéressé et généreux du bien-être des autres.',
         synonyms: ['Selflessness', 'Benevolence', 'Charity', 'Compassion'],
         difficulty: 'Intermédiaire',
         tags: ['Values', 'Society', 'Humanity'],
@@ -598,6 +605,7 @@ export const CURATED_ENTRIES: DailyEntry[] = [
         context: 'Frequently used for students studying before exams or workers meeting a tight deadline.',
         example: 'She had to burn the midnight oil to finish the quarterly financial report on time.',
         exampleTranslation: 'Elle a dû travailler tard dans la nuit pour finir le rapport financier trimestriel à temps.',
+        frenchTranslation: 'Brûler la chandelle par les deux bouts — travailler ou étudier tard dans la nuit.',
         malagasy: {
           translation: 'Miasa na mianatra mafy hatramin’ny alina mandry / Miari-tory hiasa',
           explanation: 'Fiasana na fianarana mafy mandritra ny alina mba hahavitana asa na fanadinana.',

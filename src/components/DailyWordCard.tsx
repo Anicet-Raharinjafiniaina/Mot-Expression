@@ -202,6 +202,32 @@ export function DailyWordCard({
           </div>
         )}
 
+        {/* ================= FRENCH TRANSLATION SECTION ================= */}
+        {language === 'en' && word.frenchTranslation && (
+          <div className="mt-6 pt-4 border-t border-dashed border-sky-200">
+            <div className="rounded-xl bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50/40 border border-sky-200 p-4 sm:p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                  🇫🇷
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-sky-950">Traduction en français</h4>
+                  <p className="text-xs text-sky-700">Traduction française du terme</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-sky-100 shadow-2xs">
+                <div className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+                  Traduction française
+                </div>
+                <div className="text-base font-bold text-sky-900 mt-0.5">
+                  {word.frenchTranslation}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ================= MALAGASY TRANSLATION & EXPLANATION SECTION ================= */}
         <div className="mt-6 pt-4 border-t border-dashed border-emerald-200">
           <div className="rounded-xl bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-amber-50/40 border border-emerald-200 p-4 sm:p-5 space-y-3">

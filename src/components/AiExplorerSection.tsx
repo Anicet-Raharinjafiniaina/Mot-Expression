@@ -395,6 +395,29 @@ export function AiExplorerSection({
             )}
           </div>
 
+          {/* FRENCH SECTION - only shown when the chosen language is English */}
+          {language === 'en' && result.frenchTranslation && (
+            <div className="rounded-2xl bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50/40 border border-sky-200 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                  🇫🇷
+                </div>
+                <h4 className="text-sm font-bold text-sky-950">
+                  Traduction en français
+                </h4>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-sky-100 shadow-2xs">
+                <div className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+                  Traduction française
+                </div>
+                <div className="text-base font-bold text-sky-900 mt-0.5">
+                  {result.frenchTranslation}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* MALAGASY SECTION */}
           <div className="rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50 to-amber-50/40 border border-emerald-200 p-5 space-y-3">
             <div className="flex items-center gap-2">

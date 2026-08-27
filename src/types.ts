@@ -22,6 +22,8 @@ export interface WordItem {
   explanation: string;
   example: string;
   exampleTranslation: string;
+  /** French translation shown when the source language is English. */
+  frenchTranslation?: string;
   synonyms?: string[];
   etymology?: string;
   difficulty?: string;
@@ -40,6 +42,8 @@ export interface ExpressionItem {
   context: string;
   example: string;
   exampleTranslation: string;
+  /** French translation shown when the source language is English. */
+  frenchTranslation?: string;
   malagasy: MalagasyExplanation;
 }
 

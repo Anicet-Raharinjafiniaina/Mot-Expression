@@ -160,6 +160,32 @@ export function DailyExpressionCard({
           )}
         </div>
 
+        {/* ================= FRENCH TRANSLATION SECTION ================= */}
+        {language === 'en' && expression.frenchTranslation && (
+          <div className="mt-6 pt-4 border-t border-dashed border-sky-200">
+            <div className="rounded-xl bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50/40 border border-sky-200 p-4 sm:p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                  🇫🇷
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-sky-950">Traduction en français</h4>
+                  <p className="text-xs text-sky-700">Traduction française de l'expression</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-sky-100 shadow-2xs">
+                <div className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+                  Traduction française
+                </div>
+                <div className="text-base font-bold text-sky-900 mt-0.5">
+                  {expression.frenchTranslation}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ================= MALAGASY TRANSLATION & EXPLANATION SECTION ================= */}
         <div className="mt-6 pt-4 border-t border-dashed border-amber-200">
           <div className="rounded-xl bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-emerald-50/40 border border-amber-200 p-4 sm:p-5 space-y-3">
