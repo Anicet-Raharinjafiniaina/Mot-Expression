@@ -155,7 +155,7 @@ export function Navbar({
               id="streak-indicator-btn"
               onClick={() => onTabChange('progress')}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
-              title={`${streak} andro nifanesy / jours consécutifs d'apprentissage`}
+              title={`${streak} jours consécutifs d'apprentissage`}
             >
               <Flame className="w-4 h-4 text-amber-600 fill-amber-500 animate-pulse" />
               <span className="text-xs sm:text-sm font-bold">{streak}j</span>

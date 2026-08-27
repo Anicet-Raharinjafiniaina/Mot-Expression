@@ -64,7 +64,7 @@ export function AiExplorerSection({
       setAskAnswer(answer);
     } catch (err: any) {
       console.error(err);
-      setAskAnswer("Nisy olana teo am-panontaniana. Andramo indray azafady.");
+      setAskAnswer("Un problème a été survenu.");
     } finally {
       setIsAsking(false);
     }
