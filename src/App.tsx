@@ -325,8 +325,8 @@ export default function App() {
       <footer className="border-t border-stone-200 bg-white py-6 mt-12 text-center text-xs text-stone-500">
         <div className="max-w-7xl mx-auto px-4 space-y-2">
           <div className="flex items-center justify-center gap-2 font-semibold text-stone-700">
-            <span className="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">V</span>
-            <span>Vocab — Apprentissage du vocabulaire quotidien (Français • English • Malagasy)</span>
+            <span className="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">ME</span>
+            <span>Apprentissage du vocabulaire quotidien (Français • English • Malagasy)</span>
           </div>
           <p className="text-stone-600">
             1 mot & 1 expression par jour • Explications en malagasy • Quiz & Exercices
