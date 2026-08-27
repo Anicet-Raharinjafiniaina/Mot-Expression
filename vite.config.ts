@@ -6,7 +6,10 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    base: '/Mot-Expression/',
+    // Relative base so the same build works when served both at a repo sub-path
+    // (GitHub Pages: /Mot-Expression/) and at the domain root (Render: /).
+    // The app is a state-driven tab SPA (no URL routing), so a relative base is safe.
+    base: './',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
