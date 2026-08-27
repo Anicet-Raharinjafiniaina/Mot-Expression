@@ -328,15 +328,15 @@ export default function App() {
             </div>
 
             {/* Bottom Call to Action: Daily Quiz Invitation */}
-            <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-stone-900 text-white rounded-3xl p-6 sm:p-8 shadow-md flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="bg-gradient-to-br from-emerald-900 via-emerald-950 to-teal-900 text-white rounded-3xl p-6 sm:p-8 shadow-md flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="space-y-2 text-center sm:text-left">
-                <span className="text-xs uppercase font-bold tracking-wider text-indigo-300 bg-white/10 px-3 py-1 rounded-full backdrop-blur-xs">
+                <span className="text-xs uppercase font-bold tracking-wider text-emerald-300 bg-white/10 px-3 py-1 rounded-full backdrop-blur-xs">
                   Entraînement & Consolidation
                 </span>
                 <h3 className="text-xl sm:text-2xl font-bold">
                   Prêt à faire le Quiz sur les mots du jour ?
                 </h3>
-                <p className="text-xs sm:text-sm text-indigo-200 max-w-xl">
+                <p className="text-xs sm:text-sm text-emerald-200 max-w-xl">
                   Vérifiez votre compréhension des définitions, des usages et des traductions apprises aujourd'hui.
                 </p>
               </div>
@@ -344,9 +344,9 @@ export default function App() {
               <button
                 id="btn-start-daily-quiz"
                 onClick={() => setCurrentTab('quiz')}
-                className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-stone-950 font-bold rounded-2xl text-sm shadow-md transition-all hover:scale-105 flex items-center gap-2 shrink-0 cursor-pointer"
+                className="px-6 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-emerald-950 font-bold rounded-2xl text-sm shadow-md transition-all hover:scale-105 flex items-center gap-2 shrink-0 cursor-pointer"
               >
-                <Trophy className="w-4 h-4 text-stone-950" />
+                <Trophy className="w-4 h-4 text-emerald-950" />
                 <span>Commencer le Quiz</span>
                 <ArrowRight className="w-4 h-4" />
               </button>

@@ -134,7 +134,7 @@ export function Navbar({
                 }`}
                 title="Apprendre en Français"
               >
-                🇫🇷 Français
+                Français
               </button>
               <button
                 id="lang-switch-en"
@@ -146,7 +146,7 @@ export function Navbar({
                 }`}
                 title="Learn in English"
               >
-                🇬🇧 English
+                English
               </button>
             </div>
 
