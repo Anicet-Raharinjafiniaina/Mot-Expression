@@ -673,6 +673,11 @@ export function getEntryForDate(dateStr: string): DailyEntry {
   };
 }
 
+/** Returns true when the date has a fully hand-curated entry. */
+export function isCuratedDate(dateStr: string): boolean {
+  return CURATED_ENTRIES.some((e) => e.date === dateStr);
+}
+
 export function formatDateFr(dateStr: string): string {
   try {
     const d = new Date(dateStr + 'T12:00:00Z');

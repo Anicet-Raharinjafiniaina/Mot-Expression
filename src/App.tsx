@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { DailyWordCard } from './components/DailyWordCard';
 import { DailyExpressionCard } from './components/DailyExpressionCard';
@@ -12,8 +12,10 @@ import { HistorySection } from './components/HistorySection';
 import { FavoritesSection } from './components/FavoritesSection';
 import { AiExplorerSection } from './components/AiExplorerSection';
 import { ProgressSection } from './components/ProgressSection';
-import { getEntryForDate, formatDateFr, formatDateEn, formatDateMg } from './data/curatedData';
-import { Language, UserProgress, FavoriteItem } from './types';
+import { getEntryForDate, isCuratedDate, formatDateFr, formatDateEn, formatDateMg } from './data/curatedData';
+import { Language, UserProgress, FavoriteItem, DailyEntry } from './types';
+import { fetchDailyVocab, AiDailyResult } from './services/geminiService';
+import { getCachedDaily, setCachedDaily, clearCachedDaily } from './utils/dailyCache';
 import {
   getStoredProgress,
   saveStoredProgress,
@@ -34,14 +36,39 @@ import {
   ArrowRight,
   Flame,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
+
+/** Local date in YYYY-MM-DD using the visitor's own timezone. */
+function todayLocalDate(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Builds a full DailyEntry from an AI-generated daily payload (adds displayDate). */
+function buildEntryFromDaily(data: AiDailyResult): DailyEntry {
+  return {
+    date: data.date,
+    displayDate: {
+      fr: formatDateFr(data.date),
+      en: formatDateEn(data.date),
+      mg: formatDateMg(data.date),
+    },
+    fr: data.fr,
+    en: data.en,
+    quiz: data.quiz,
+  };
+}
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('fr');
   const [currentTab, setCurrentTab] = useState<'today' | 'history' | 'quiz' | 'favorites' | 'explorer' | 'progress'>('today');
-  
-  // Default to today
-  const defaultToday = '2026-08-27';
+
+  // Default to the visitor's real current date.
+  const defaultToday = todayLocalDate();
   const [selectedDate, setSelectedDate] = useState<string>(defaultToday);
 
   // User progress state
@@ -57,12 +84,62 @@ export default function App() {
     saveStoredProgress(progress);
   }, [progress]);
 
-  // Current entry
-  const entry = useMemo(() => {
-    return getEntryForDate(selectedDate);
-  }, [selectedDate]);
+  // Daily entry: hand-curated when it exists, otherwise AI-generated (and cached),
+  // with a deterministic fallback when the backend / Gemini is unavailable.
+  const [entry, setEntry] = useState<DailyEntry>(() => getEntryForDate(defaultToday));
+  const [isEntryLoading, setIsEntryLoading] = useState(false);
+  const [aiGenerated, setAiGenerated] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    // Dates that are hand-curated never hit the network.
+    if (isCuratedDate(selectedDate)) {
+      setEntry(getEntryForDate(selectedDate));
+      setAiGenerated(false);
+      setIsEntryLoading(false);
+      return;
+    }
+
+    // Reuse an already generated entry stored locally.
+    const cached = getCachedDaily(selectedDate);
+    if (cached) {
+      setEntry(buildEntryFromDaily(cached));
+      setAiGenerated(true);
+      setIsEntryLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsEntryLoading(true);
+    fetchDailyVocab(selectedDate, language)
+      .then((data) => {
+        if (cancelled) return;
+        setCachedDaily(selectedDate, data);
+        setEntry(buildEntryFromDaily(data));
+        setAiGenerated(true);
+      })
+      .catch((err) => {
+        console.error('Daily AI generation failed, falling back to curated pool:', err);
+        if (cancelled) return;
+        setEntry(getEntryForDate(selectedDate));
+        setAiGenerated(false);
+      })
+      .finally(() => {
+        if (!cancelled) setIsEntryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, language, refreshKey]);
 
   const activeContent = entry[language];
+
+  const handleRegenerate = () => {
+    clearCachedDaily(selectedDate);
+    setAiGenerated(false);
+    setRefreshKey((k) => k + 1);
+  };
 
   // Helper date shifts
   const shiftDate = (days: number) => {
@@ -126,6 +203,35 @@ export default function App() {
         {currentTab === 'today' && (
           <div className="space-y-8 animate-fadeIn">
             
+            {/* AI status bar (only for dates that are not hand-curated) */}
+            {!isCuratedDate(selectedDate) && (
+              <div className="flex items-center justify-end gap-2">
+                {isEntryLoading ? (
+                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    {language === 'fr' ? 'Génération IA du contenu…' : 'AI content generation…'}
+                  </span>
+                ) : aiGenerated ? (
+                  <span className="inline-flex items-center gap-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    {language === 'fr' ? 'Généré par l’IA' : 'AI-generated'}
+                    <button
+                      id="btn-regenerate"
+                      onClick={handleRegenerate}
+                      className="ml-1 px-2 py-0.5 rounded-lg bg-white border border-emerald-300 text-emerald-800 text-[11px] font-bold hover:bg-emerald-100 transition cursor-pointer"
+                      title="Régénérer ce contenu"
+                    >
+                      ↻ {language === 'fr' ? 'Régénérer' : 'Regenerate'}
+                    </button>
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium text-stone-500 px-3 py-1.5 rounded-full bg-stone-100 border border-stone-200">
+                    {language === 'fr' ? 'Contenu de repli (IA indisponible)' : 'Fallback content (AI unavailable)'}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Header Date & Navigation Controller */}
             <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1">

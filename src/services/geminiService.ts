@@ -1,4 +1,4 @@
-import { Language } from '../types';
+import { Language, WordItem, ExpressionItem, QuizQuestion } from '../types';
 
 export interface AiVocabResult {
   term: string;
@@ -62,4 +62,35 @@ export async function askVocabAi(question: string, language: Language): Promise<
 
   const json = await res.json();
   return json.answer;
+}
+
+/** The structured payload the server returns for a generated "daily entry". */
+export interface AiDailyResult {
+  date: string;
+  fr: {
+    word: WordItem;
+    expression: ExpressionItem;
+  };
+  en: {
+    word: WordItem;
+    expression: ExpressionItem;
+  };
+  quiz: QuizQuestion[];
+}
+
+/** Ask the server to generate (via Gemini) a complete daily entry for an arbitrary date. */
+export async function fetchDailyVocab(date: string, language: Language): Promise<AiDailyResult> {
+  const res = await fetch('/api/vocab/daily', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, language }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la génération quotidienne');
+  }
+
+  const json = await res.json();
+  return json.data as AiDailyResult;
 }
