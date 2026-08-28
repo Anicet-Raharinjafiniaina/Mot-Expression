@@ -2,19 +2,17 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import { GoogleGenAI, Type } from "@google/genai";
+import Groq from "groq-sdk";
 import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
 // TLS workaround for local dev networks:
 // When run behind a proxy / SSL-inspection filter, outgoing HTTPS calls to the
-// Gemini API can be intercepted with a self-signed certificate. Node rejects
-// it by default, which surfaces as a generic "fetch failed" (500 on /api/vocab/ask).
-// The @google/genai SDK does not expose a TLS/agent option in httpOptions, so we
-// toggle Node's global cert check here. Only enabled explicitly via .env flag.
-// In production, prefer a trusted CA or NODE_EXTRA_CA_CERTS instead.
-if (process.env.GEMINI_INSECURE_TLS === "true") {
+// LLM API (Groq) can be intercepted with a self-signed certificate. Node rejects
+// it by default, which surfaces as a generic "fetch failed" (500 on /api/vocab/*).
+// Only enabled explicitly via .env flag. In production, prefer a trusted CA.
+if (process.env.LLM_INSECURE_TLS === "true" || process.env.GEMINI_INSECURE_TLS === "true") {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
@@ -26,20 +24,77 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Lazy-initialize Gemini client
-let aiClient: GoogleGenAI | null = null;
-function getGeminiClient(): GoogleGenAI {
+// The Groq model used for all generation (configurable via GROQ_MODEL).
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+
+// Lazy-initialize Groq client
+let aiClient: Groq | null = null;
+function getGroqClient(): Groq {
   if (!aiClient) {
-    aiClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || "",
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
+    aiClient = new Groq({
+      apiKey: process.env.GROQ_API_KEY || "",
     });
   }
   return aiClient;
+}
+
+/**
+ * Sends a chat completion to Groq and returns the raw text content.
+ *
+ * - `json=true` asks for a plain JSON object (loose).
+ * - `schema` asks for STRICT structured output (JSON Schema): the model is forced
+ *   to return the exact shape, so required sections can't be dropped/truncated
+ *   the way a free-form json_object can be.
+ * Prefer supplying `schema` whenever the caller needs a specific structure.
+ */
+async function groqChat(
+  system: string,
+  user: string,
+  opts: { json?: boolean; schema?: Record<string, unknown>; maxTokens?: number } = {}
+): Promise<string> {
+  const { json = false, schema, maxTokens } = opts;
+  const client = getGroqClient();
+  const res = await client.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    temperature: 0.7,
+    ...(maxTokens ? { max_completion_tokens: maxTokens } : {}),
+    response_format: schema
+      ? {
+          type: "json_schema" as const,
+          json_schema: {
+            name: "structured_output",
+            strict: true,
+            schema: schema as any,
+          },
+        }
+      : json
+        ? { type: "json_object" as const }
+        : undefined,
+  });
+  const content = res.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Empty response from Groq");
+  return content;
+}
+
+/** Attempts to parse a JSON payload from a model reply, tolerating markdown fences. */
+function parseJson(content: string): any {
+  const trimmed = (content || "").trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence) return JSON.parse(fence[1]);
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start !== -1 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1));
+    }
+  }
+  throw new Error("Could not parse JSON from model response");
 }
 
 // In-memory cache of generated daily entries so the same date is not regenerated
@@ -55,11 +110,10 @@ app.get("/api/health", (req, res) => {
 app.post("/api/vocab/explore", async (req, res) => {
   try {
     const { term, language, category } = req.body;
-    const ai = getGeminiClient();
 
     const targetLang = language === "en" ? "English" : "French";
-    const prompt = `You are an expert linguist and translator specializing in ${targetLang} and Malagasy (Teny Malagasy).
-Analyze or generate a rich vocabulary entry for: "${term || 'a relevant advanced/useful word in category: ' + category}".
+    const system = `You are an expert linguist and translator specializing in ${targetLang} and Malagasy (Teny Malagasy).`;
+    const prompt = `Analyze or generate a rich vocabulary entry for: "${term || 'a relevant advanced/useful word in category: ' + category}".
 The source language is ${targetLang}. Provide accurate, high-quality definitions, contextual explanations, real-life examples, and comprehensive translations and explanations in standard Malagasy (Teny Malagasy of Madagascar).
 
 Return a JSON object strictly matching this schema:
@@ -90,57 +144,61 @@ Return a JSON object strictly matching this schema:
   }
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
+    const exploreSchema: Record<string, unknown> = {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        term: { type: "string" },
+        type: { type: "string" },
+        partOfSpeech: { type: "string" },
+        phonetic: { type: "string" },
+        language: { type: "string" },
+        definition: { type: "string" },
+        explanation: { type: "string" },
+        example: { type: "string" },
+        exampleTranslation: { type: "string" },
+        frenchTranslation: { type: "string" },
+        synonyms: { type: "array", items: { type: "string" } },
+        malagasy: {
+          type: "object",
+          additionalProperties: false,
           properties: {
-            term: { type: Type.STRING },
-            type: { type: Type.STRING },
-            partOfSpeech: { type: Type.STRING },
-            phonetic: { type: Type.STRING },
-            language: { type: Type.STRING },
-            definition: { type: Type.STRING },
-            explanation: { type: Type.STRING },
-            example: { type: Type.STRING },
-            exampleTranslation: { type: Type.STRING },
-            frenchTranslation: { type: Type.STRING },
-            synonyms: { type: Type.ARRAY, items: { type: Type.STRING } },
-            malagasy: {
-              type: Type.OBJECT,
-              properties: {
-                translation: { type: Type.STRING },
-                explanation: { type: Type.STRING },
-                exampleInMalagasy: { type: Type.STRING },
-                culturalNote: { type: Type.STRING },
-                synonymsMalagasy: { type: Type.ARRAY, items: { type: Type.STRING } },
-              },
-              required: ["translation", "explanation", "exampleInMalagasy"],
-            },
-            quizQuestion: {
-              type: Type.OBJECT,
-              properties: {
-                question: { type: Type.STRING },
-                options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                correctIndex: { type: Type.INTEGER },
-                explanation: { type: Type.STRING },
-              },
-              required: ["question", "options", "correctIndex", "explanation"],
-            },
+            translation: { type: "string" },
+            explanation: { type: "string" },
+            exampleInMalagasy: { type: "string" },
+            culturalNote: { type: "string" },
+            synonymsMalagasy: { type: "array", items: { type: "string" } },
           },
-          required: ["term", "type", "partOfSpeech", "definition", "explanation", "example", "malagasy"],
+          required: ["translation", "explanation", "exampleInMalagasy", "culturalNote", "synonymsMalagasy"],
+        },
+        quizQuestion: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            question: { type: "string" },
+            options: { type: "array", items: { type: "string" } },
+            correctIndex: { type: "integer" },
+            explanation: { type: "string" },
+          },
+          required: ["question", "options", "correctIndex", "explanation"],
         },
       },
-    });
+      required: ["term", "type", "partOfSpeech", "phonetic", "language", "definition", "explanation", "example", "exampleTranslation", "frenchTranslation", "synonyms", "malagasy", "quizQuestion"],
+    };
 
-    const parsed = JSON.parse(response.text || "{}");
+    // WARNING: keep max_completion_tokens conservative. On Groq's free/on_demand
+    // tier, gpt-oss-120b has an 8000 TPM limit, and max_completion_tokens counts
+    // as a token reservation toward that limit. Reserving 16000 (as before)
+    // pushed the request over the limit (Requested 16887 > Limit 8000) → error 413.
+    // A single vocab entry is far smaller than the daily bulk (which uses 5000),
+    // so 5000 leaves enough headroom against the 8000 TPM cap.
+    const response = await groqChat(system, prompt, { schema: exploreSchema, maxTokens: 5000 });
+
+    const parsed = parseJson(response);
     res.json({ success: true, data: parsed });
   } catch (error: any) {
-    console.error("Gemini Explore Error:", error);
-    console.error("Gemini Explore cause:", error?.cause || error);
+    console.error("Groq Explore Error:", error);
+    console.error("Groq Explore cause:", error?.cause || error);
     res
       .status(500)
       .json({ success: false, error: error?.cause?.message || error.message || "Failed to generate vocabulary entry" });
@@ -162,178 +220,144 @@ app.post("/api/vocab/daily", async (req, res) => {
     const cached = dailyEntryCache.get(date);
     if (cached) return res.json({ success: true, data: cached });
 
-    const ai = getGeminiClient();
     const targetLang = language === "en" ? "English" : "French";
+    const system = `You are an expert trilingual linguist (${targetLang}, English, and Malagasy / Teny Malagasy) curating a daily language-learning entry.`;
 
-    const prompt = `You are an expert trilingual linguist (${targetLang}, English, and Malagasy / Teny Malagasy) curating a daily language-learning entry.
+    const prompt = `Date: ${date}. Create a THEMED daily lesson (fresh theme/semantic field derived from the date) with:
+- one French word (useful/advanced), one French idiom,
+- one English word (different from the French), one English idiom (different from the French).
+Each item: concise but complete definition/explanation, realistic contemporary example, French translation for English items, and a thorough explanation + translation + cultural note/ohabolana + synonyms in Malagasy.
+Also produce EXACTLY 4 quiz questions (2 FR, 2 EN) mixing definition, usage/context and Malagasy-translation about the four terms; correctIndex is the 0-based index of the correct option.
+Output only a compact JSON object conforming exactly to the required schema.`;
 
-Today's date is ${date}. Create a THEMED daily lesson for this specific date (pick a fresh theme/semantic field derived from the date to guarantee variety between days) containing:
-1. A French word of the day (obsolete, advanced or really useful word in French).
-2. A French idiomatic expression of the day.
-3. An English word of the day (different from the French word).
-4. An English idiom of the day (different from the French idiom).
-Each with a precise definition/explanation, a realistic contemporary example, a French translation (for the English items) and a thorough explanation + translation in Malagasy (with cultural note / ohabolana when relevant and Malagasy synonyms).
-
-Finally produce 4 quiz questions (2 FR, 2 EN) mixing definition, usage/context and Malagasy-translation questions about the four terms above; correctIndex is the 0-based index of the correct option.
-
-Return a single JSON object strictly matching this schema:
-{
-  "date": "${date}",
-  "fr": {
-    "word": {
-      "id": "fr-${date}-w",
-      "date": "${date}",
-      "language": "fr",
-      "term": "...",
-      "partOfSpeech": "e.g. nom féminin",
-      "phonetic": "/.../",
-      "definition": "...",
-      "explanation": "...",
-      "example": "...",
-      "exampleTranslation": "...",
-      "synonyms": ["..."],
-      "etymology": "...",
-      "difficulty": "Débutant | Intermédiaire | Avancé",
-      "malagasy": { "translation": "...", "explanation": "...", "exampleInMalagasy": "...", "culturalNote": "...", "synonymsMalagasy": ["..."], "proverbEquivalent": "..." }
-    },
-    "expression": {
-      "id": "fr-${date}-e",
-      "date": "${date}",
-      "language": "fr",
-      "term": "...",
-      "register": "...",
-      "origin": "...",
-      "explanation": "...",
-      "context": "...",
-      "example": "...",
-      "exampleTranslation": "...",
-      "malagasy": { "translation": "...", "explanation": "...", "exampleInMalagasy": "...", "culturalNote": "...", "synonymsMalagasy": ["..."], "proverbEquivalent": "..." }
-    }
-  },
-  "en": {
-    "word": { "id": "en-${date}-w", "language": "en", "partOfSpeech": "noun/verb/...", "term": "...", "definition": "...", "explanation": "...", "example": "...", "exampleTranslation": "...", "frenchTranslation": "...", "synonyms": ["..."], "malagasy": { "translation": "...", "explanation": "...", "exampleInMalagasy": "...", "culturalNote": "..." } },
-    "expression": { "id": "en-${date}-e", "language": "en", "term": "...", "explanation": "...", "context": "...", "example": "...", "exampleTranslation": "...", "frenchTranslation": "...", "malagasy": { "translation": "...", "explanation": "...", "exampleInMalagasy": "..." } }
-  },
-  "quiz": [
-    { "id": "q-${date}-1", "type": "definition", "language": "fr", "targetTerm": "...", "question": "...", "options": ["a","b","c","d"], "correctIndex": 0, "explanation": "...", "malagasyExplanation": "..." },
-    { "id": "q-${date}-2", "type": "malagasy", "language": "fr", "targetTerm": "...", "question": "...", "options": ["a","b","c","d"], "correctIndex": 0, "explanation": "...", "malagasyExplanation": "..." },
-    { "id": "q-${date}-3", "type": "context", "language": "en", "targetTerm": "...", "question": "...", "options": ["a","b","c","d"], "correctIndex": 0, "explanation": "...", "malagasyExplanation": "..." },
-    { "id": "q-${date}-4", "type": "definition", "language": "en", "targetTerm": "...", "question": "...", "options": ["a","b","c","d"], "correctIndex": 0, "explanation": "...", "malagasyExplanation": "..." }
-  ]
-}`;
-
-    const wordItemSchema = {
-      type: Type.OBJECT,
+    const malagasySchema: Record<string, unknown> = {
+      type: "object",
+      additionalProperties: false,
       properties: {
-        id: { type: Type.STRING },
-        date: { type: Type.STRING },
-        language: { type: Type.STRING },
-        term: { type: Type.STRING },
-        partOfSpeech: { type: Type.STRING },
-        phonetic: { type: Type.STRING },
-        definition: { type: Type.STRING },
-        explanation: { type: Type.STRING },
-        example: { type: Type.STRING },
-        exampleTranslation: { type: Type.STRING },
-        frenchTranslation: { type: Type.STRING },
-        synonyms: { type: Type.ARRAY, items: { type: Type.STRING } },
-        etymology: { type: Type.STRING },
-        difficulty: { type: Type.STRING },
-        malagasy: {
-          type: Type.OBJECT,
-          properties: {
-            translation: { type: Type.STRING },
-            explanation: { type: Type.STRING },
-            exampleInMalagasy: { type: Type.STRING },
-            culturalNote: { type: Type.STRING },
-            synonymsMalagasy: { type: Type.ARRAY, items: { type: Type.STRING } },
-            proverbEquivalent: { type: Type.STRING },
-          },
-          required: ["translation", "explanation", "exampleInMalagasy"],
-        },
+        translation: { type: "string" },
+        explanation: { type: "string" },
+        exampleInMalagasy: { type: "string" },
+        culturalNote: { type: "string" },
+        synonymsMalagasy: { type: "array", items: { type: "string" } },
+        proverbEquivalent: { type: "string" },
       },
-      required: ["id", "date", "language", "term", "partOfSpeech", "definition", "explanation", "example", "exampleTranslation", "malagasy"],
+      required: ["translation", "explanation", "exampleInMalagasy", "culturalNote", "synonymsMalagasy", "proverbEquivalent"],
     };
 
-    const expressionItemSchema = {
-      type: Type.OBJECT,
+    const wordItemSchema: Record<string, unknown> = {
+      type: "object",
+      additionalProperties: false,
       properties: {
-        id: { type: Type.STRING },
-        date: { type: Type.STRING },
-        language: { type: Type.STRING },
-        term: { type: Type.STRING },
-        register: { type: Type.STRING },
-        origin: { type: Type.STRING },
-        explanation: { type: Type.STRING },
-        context: { type: Type.STRING },
-        example: { type: Type.STRING },
-        exampleTranslation: { type: Type.STRING },
-        frenchTranslation: { type: Type.STRING },
-        malagasy: {
-          type: Type.OBJECT,
-          properties: {
-            translation: { type: Type.STRING },
-            explanation: { type: Type.STRING },
-            exampleInMalagasy: { type: Type.STRING },
-            culturalNote: { type: Type.STRING },
-            synonymsMalagasy: { type: Type.ARRAY, items: { type: Type.STRING } },
-            proverbEquivalent: { type: Type.STRING },
-          },
-          required: ["translation", "explanation", "exampleInMalagasy"],
-        },
+        id: { type: "string" },
+        date: { type: "string" },
+        language: { type: "string" },
+        term: { type: "string" },
+        partOfSpeech: { type: "string" },
+        phonetic: { type: "string" },
+        definition: { type: "string" },
+        explanation: { type: "string" },
+        example: { type: "string" },
+        exampleTranslation: { type: "string" },
+        frenchTranslation: { type: "string" },
+        synonyms: { type: "array", items: { type: "string" } },
+        etymology: { type: "string" },
+        difficulty: { type: "string" },
+        malagasy: malagasySchema,
       },
-      required: ["id", "date", "language", "term", "explanation", "context", "example", "exampleTranslation", "malagasy"],
+      required: ["id", "date", "language", "term", "partOfSpeech", "phonetic", "definition", "explanation", "example", "exampleTranslation", "frenchTranslation", "synonyms", "etymology", "difficulty", "malagasy"],
     };
 
-    const quizQuestionSchema = {
-      type: Type.OBJECT,
+    const expressionItemSchema: Record<string, unknown> = {
+      type: "object",
+      additionalProperties: false,
       properties: {
-        id: { type: Type.STRING },
-        type: { type: Type.STRING },
-        language: { type: Type.STRING },
-        targetTerm: { type: Type.STRING },
-        question: { type: Type.STRING },
-        options: { type: Type.ARRAY, items: { type: Type.STRING } },
-        correctIndex: { type: Type.INTEGER },
-        explanation: { type: Type.STRING },
-        malagasyExplanation: { type: Type.STRING },
+        id: { type: "string" },
+        date: { type: "string" },
+        language: { type: "string" },
+        term: { type: "string" },
+        register: { type: "string" },
+        origin: { type: "string" },
+        explanation: { type: "string" },
+        context: { type: "string" },
+        example: { type: "string" },
+        exampleTranslation: { type: "string" },
+        frenchTranslation: { type: "string" },
+        malagasy: malagasySchema,
+      },
+      required: ["id", "date", "language", "term", "register", "origin", "explanation", "context", "example", "exampleTranslation", "frenchTranslation", "malagasy"],
+    };
+
+    const quizQuestionSchema: Record<string, unknown> = {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        id: { type: "string" },
+        type: { type: "string" },
+        language: { type: "string" },
+        targetTerm: { type: "string" },
+        question: { type: "string" },
+        options: { type: "array", items: { type: "string" } },
+        correctIndex: { type: "integer" },
+        explanation: { type: "string" },
+        malagasyExplanation: { type: "string" },
       },
       required: ["id", "type", "language", "targetTerm", "question", "options", "correctIndex", "explanation", "malagasyExplanation"],
     };
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            date: { type: Type.STRING },
-            fr: {
-              type: Type.OBJECT,
-              properties: {
-                word: wordItemSchema,
-                expression: expressionItemSchema,
-              },
-              required: ["word", "expression"],
-            },
-            en: {
-              type: Type.OBJECT,
-              properties: {
-                word: wordItemSchema,
-                expression: expressionItemSchema,
-              },
-              required: ["word", "expression"],
-            },
-            quiz: { type: Type.ARRAY, items: quizQuestionSchema },
-          },
-          required: ["date", "fr", "en", "quiz"],
+    const dailySchema: Record<string, unknown> = {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        date: { type: "string" },
+        fr: {
+          type: "object",
+          additionalProperties: false,
+          properties: { word: wordItemSchema, expression: expressionItemSchema },
+          required: ["word", "expression"],
         },
+        en: {
+          type: "object",
+          additionalProperties: false,
+          properties: { word: wordItemSchema, expression: expressionItemSchema },
+          required: ["word", "expression"],
+        },
+        quiz: { type: "array", items: quizQuestionSchema },
       },
-    });
+      required: ["date", "fr", "en", "quiz"],
+    };
 
-    const parsed = JSON.parse(response.text || "{}");
+    let parsed: any = null;
+    let lastError: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 800 * attempt));
+        const response = await groqChat(system, prompt, { schema: dailySchema, maxTokens: 5000 });
+        const candidate = parseJson(response);
+
+        // Validate that the model returned every required section before accepting.
+        if (
+          !candidate ||
+          candidate.date !== date ||
+          !candidate.fr?.word?.term ||
+          !candidate.fr?.expression?.term ||
+          !candidate.en?.word?.term ||
+          !candidate.en?.expression?.term ||
+          !Array.isArray(candidate.quiz) ||
+          candidate.quiz.length < 1
+        ) {
+          throw new Error("Generated daily entry is missing required sections");
+        }
+        parsed = candidate;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        console.error(`Groq Daily attempt ${attempt + 1} failed:`, err?.message || err);
+      }
+    }
+
+    if (!parsed) {
+      throw new Error(lastError?.message || "Failed to generate daily entry");
+    }
 
     // Normalize ids/fields so favorites & "learned" markers stay consistent per date.
     if (parsed?.fr?.word) {
@@ -367,8 +391,8 @@ Return a single JSON object strictly matching this schema:
     dailyEntryCache.set(date, parsed);
     res.json({ success: true, data: parsed });
   } catch (error: any) {
-    console.error("Gemini Daily Error:", error);
-    console.error("Gemini Daily cause:", error?.cause || error);
+    console.error("Groq Daily Error:", error);
+    console.error("Groq Daily cause:", error?.cause || error);
     res
       .status(500)
       .json({ success: false, error: error?.cause?.message || error.message || "Failed to generate daily entry" });
@@ -379,20 +403,17 @@ Return a single JSON object strictly matching this schema:
 app.post("/api/vocab/ask", async (req, res) => {
   try {
     const { question, language } = req.body;
-    const ai = getGeminiClient();
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: `You are Mot-Expression's friendly Malagasy-French-English linguistic tutor.
-The user is asking: "${question}"
+    const system = "You are Mot-Expression's friendly Malagasy-French-English linguistic tutor.";
+    const prompt = `The user is asking: "${question}"
 User's target learning language: ${language === 'en' ? 'English' : 'French'}.
-Provide a helpful, precise, culturally grounded answer with clear explanations, practical examples, and explicit Malagasy translations/equivalents (fanazavana amin'ny teny malagasy). Structure your response clearly with markdown headings, bullet points, and highlight key terms.`,
-    });
+Provide a helpful, precise, culturally grounded answer with clear explanations, practical examples, and explicit Malagasy translations/equivalents (fanazavana amin'ny teny malagasy). Structure your response clearly with markdown headings, bullet points, and highlight key terms.`;
 
-    res.json({ success: true, answer: response.text });
+    const response = await groqChat(system, prompt, { json: false });
+    res.json({ success: true, answer: response });
   } catch (error: any) {
-    console.error("Gemini Ask Error:", error);
-    console.error("Gemini Ask cause:", error?.cause || error);
+    console.error("Groq Ask Error:", error);
+    console.error("Groq Ask cause:", error?.cause || error);
     res
       .status(500)
       .json({ success: false, error: error?.cause?.message || error.message || "Failed to answer question" });

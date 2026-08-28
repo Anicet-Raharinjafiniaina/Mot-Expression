@@ -2,5 +2,5 @@
   "name": "Mot-Expression",
   "description": "Apprentissage quotidien du vocabulaire (mot & expression du jour) en français ou anglais avec explications et traductions en malagasy.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

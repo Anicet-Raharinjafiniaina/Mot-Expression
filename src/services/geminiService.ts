@@ -78,7 +78,7 @@ export interface AiDailyResult {
   quiz: QuizQuestion[];
 }
 
-/** Ask the server to generate (via Gemini) a complete daily entry for an arbitrary date. */
+/** Ask the server to generate (via Groq) a complete daily entry for an arbitrary date. */
 export async function fetchDailyVocab(date: string, language: Language): Promise<AiDailyResult> {
   const res = await fetch('/api/vocab/daily', {
     method: 'POST',
